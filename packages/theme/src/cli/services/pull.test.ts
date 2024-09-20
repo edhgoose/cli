@@ -31,7 +31,6 @@ const defaultFlags: PullFlags = {
   only: [],
   ignore: [],
   force: false,
-  legacy: false,
 }
 const localThemeFileSystem = fakeThemeFileSystem(path, new Map())
 

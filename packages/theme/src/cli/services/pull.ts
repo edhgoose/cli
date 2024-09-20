@@ -33,7 +33,6 @@ export interface PullFlags {
   only?: string[]
   ignore?: string[]
   force?: boolean
-  legacy?: boolean
 }
 
 export async function pull(flags: PullFlags) {
