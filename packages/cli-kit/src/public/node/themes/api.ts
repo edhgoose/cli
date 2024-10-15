@@ -3,6 +3,7 @@ import * as throttler from '../api/rest-api-throttler.js'
 import {ThemeUpdate} from '../../../cli/api/graphql/admin/generated/theme_update.js'
 import {ThemeDelete} from '../../../cli/api/graphql/admin/generated/theme_delete.js'
 import {ThemePublish} from '../../../cli/api/graphql/admin/generated/theme_publish.js'
+import {ThemeCreate} from '../../../cli/api/graphql/admin/generated/theme_create.js'
 import {restRequest, RestResponse, adminRequestDoc} from '@shopify/cli-kit/node/api/admin'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {AbortError} from '@shopify/cli-kit/node/error'
@@ -29,17 +30,36 @@ export async function fetchThemes(session: AdminSession): Promise<Theme[]> {
   return []
 }
 
-export async function createTheme(params: ThemeParams, session: AdminSession): Promise<Theme | undefined> {
-  const response = await request('POST', '/themes', session, {theme: {...params}})
+export async function themeCreate(params: ThemeParams, session: AdminSession): Promise<Theme | undefined> {
+  const response = await adminRequestDoc(
+    ThemeCreate,
+    session,
+    {
+      source: params.src,
+      name: params.name
+    },
+    'unstable',
+  )
+  const theme = response.themeCreate?.theme
+  if (!theme) {
+    const userErrors = response.themeCreate?.userErrors.map((error) => error.message).join(', ')
+    throw new Error(userErrors)
+  }
+
   const minimumThemeAssets = [
     {key: 'config/settings_schema.json', value: '[]'},
     {key: 'layout/password.liquid', value: '{{ content_for_header }}{{ content_for_layout }}'},
     {key: 'layout/theme.liquid', value: '{{ content_for_header }}{{ content_for_layout }}'},
   ]
+  const theme_id = themeId(theme.id)
+  
+  await bulkUploadThemeAssets(theme_id, minimumThemeAssets, session)
 
-  await bulkUploadThemeAssets(response.json.theme.id, minimumThemeAssets, session)
-
-  return buildTheme({...response.json.theme, createdAtRuntime: true})
+  return buildTheme({
+    id: theme_id,
+    name: theme.name,
+    role: theme.role.toLowerCase(),
+    createdAtRuntime: true})
 }
 
 export async function fetchThemeAsset(id: number, key: Key, session: AdminSession): Promise<ThemeAsset | undefined> {
@@ -98,7 +118,7 @@ export async function themeUpdate(id: number, params: ThemeParams, session: Admi
   }
 
   return buildTheme({
-    id: parseInt((theme.id as unknown as string).split('/').pop() as string, 10),
+    id: themeId(theme.id),
     name: theme.name,
     role: theme.role.toLowerCase(),
   })
@@ -208,4 +228,8 @@ function errorMessage(response: RestResponse): string {
 
 function themeGid(id: number): string {
   return `gid://shopify/OnlineStoreTheme/${id}`
+}
+
+function themeId(gid: String): number {
+  return parseInt((gid as unknown as string).split('/').pop() as string, 10)
 }

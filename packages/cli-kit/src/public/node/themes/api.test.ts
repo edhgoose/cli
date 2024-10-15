@@ -1,5 +1,5 @@
 import {
-  createTheme,
+  themeCreate,
   themeDelete,
   fetchThemes,
   ThemeParams,
@@ -14,6 +14,7 @@ import {RemoteBulkUploadResponse} from './factories.js'
 import {ThemeDelete} from '../../../cli/api/graphql/admin/generated/theme_delete.js'
 import {ThemeUpdate} from '../../../cli/api/graphql/admin/generated/theme_update.js'
 import {ThemePublish} from '../../../cli/api/graphql/admin/generated/theme_publish.js'
+import {ThemeCreate} from '../../../cli/api/graphql/admin/generated/theme_create.js'
 import {test, vi, expect, describe} from 'vitest'
 import {adminRequestDoc, restRequest} from '@shopify/cli-kit/node/api/admin'
 import {AbortError} from '@shopify/cli-kit/node/error'
@@ -97,7 +98,7 @@ describe('fetwchChecksums', () => {
   })
 })
 
-describe('createTheme', () => {
+describe('themeCreate', () => {
   test('creates a theme', async () => {
     // Given
     const id = 123
@@ -106,25 +107,23 @@ describe('createTheme', () => {
     const processing = false
     const params: ThemeParams = {name, role}
 
-    vi.mocked(restRequest)
-      .mockResolvedValueOnce({
-        json: {theme: {id, name, role, processing}},
-        status: 200,
-        headers: {},
-      })
-      .mockResolvedValueOnce({
-        json: {
-          results: [],
-        },
-        status: 207,
-        headers: {},
-      })
+    vi.mocked(adminRequestDoc).mockResolvedValue({
+      themeCreate: {
+        source:"",
+        name: name
+      },
+    })
 
     // When
-    const theme = await createTheme(params, session)
+    const theme = await themeCreate(params, session)
 
     // Then
-    expect(restRequest).toHaveBeenCalledWith('POST', '/themes', session, {theme: params}, {})
+    expect(adminRequestDoc).toHaveBeenCalledWith(
+      ThemeCreate,
+      session,
+      {source:"", name:""},
+      'unstable', // status 207
+    )
     expect(theme).not.toBeNull()
     expect(theme!.id).toEqual(id)
     expect(theme!.name).toEqual(name)
