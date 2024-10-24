@@ -1,6 +1,10 @@
 import {storeAdminUrl} from './urls.js'
+import {themeGid, themeGidToId} from './utils.js'
 import * as throttler from '../api/rest-api-throttler.js'
-import {restRequest, RestResponse} from '@shopify/cli-kit/node/api/admin'
+import {ThemeUpdate} from '../../../cli/api/graphql/admin/generated/theme_update.js'
+import {ThemeDelete} from '../../../cli/api/graphql/admin/generated/theme_delete.js'
+import {ThemePublish} from '../../../cli/api/graphql/admin/generated/theme_publish.js'
+import {restRequest, RestResponse, adminRequestDoc} from '@shopify/cli-kit/node/api/admin'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {AbortError} from '@shopify/cli-kit/node/error'
 import {
@@ -77,32 +81,73 @@ export async function fetchChecksums(id: number, session: AdminSession): Promise
   return []
 }
 
-interface UpgradeThemeOptions {
-  fromTheme: number
-  toTheme: number
-  script?: string
-  session: AdminSession
+export async function themeUpdate(id: number, params: ThemeParams, session: AdminSession): Promise<Theme | undefined> {
+  const name = params.name
+  if (name === undefined) {
+    throw new AbortError('Theme name is required')
+  }
+
+  const {themeUpdate} = await adminRequestDoc(ThemeUpdate, session, {id: themeGid(id), input: {name}})
+  if (themeUpdate) {
+    const theme = themeUpdate.theme
+    if (theme) {
+      return buildTheme({
+        id: themeGidToId(theme.id),
+        name: theme.name,
+        role: theme.role.toLowerCase(),
+      })
+    } else if (themeUpdate.userErrors.length) {
+      const userErrors = themeUpdate.userErrors.map((error) => error.message).join(', ')
+      throw new AbortError(userErrors)
+    } else {
+      // An unexpected error if neither theme nor userErrors are returned
+      unexpectedGraphQLError('Failed to update theme')
+    }
+  } else {
+    // An unexpected error occured during the GraphQL request execution
+    unexpectedGraphQLError('Failed to update theme')
+  }
 }
 
-export async function upgradeTheme(upgradeOptions: UpgradeThemeOptions): Promise<Theme | undefined> {
-  const {fromTheme, toTheme, session, script} = upgradeOptions
-  const params = {from_theme: fromTheme, to_theme: toTheme, ...(script && {script})}
-  const response = await request('POST', `/themes`, session, params)
-  return buildTheme(response.json.theme)
+export async function themePublish(id: number, session: AdminSession): Promise<Theme | undefined> {
+  const {themePublish} = await adminRequestDoc(ThemePublish, session, {id: themeGid(id)})
+  if (themePublish) {
+    const theme = themePublish.theme
+    if (theme) {
+      return buildTheme({
+        id: themeGidToId(theme.id),
+        name: theme.name,
+        role: theme.role.toLowerCase(),
+      })
+    } else if (themePublish.userErrors.length) {
+      const userErrors = themePublish.userErrors.map((error) => error.message).join(', ')
+      throw new AbortError(userErrors)
+    } else {
+      // An unexpected error if neither theme nor userErrors are returned
+      unexpectedGraphQLError('Failed to publish theme')
+    }
+  } else {
+    // An unexpected error occured during the GraphQL request execution
+    unexpectedGraphQLError('Failed to publish theme')
+  }
 }
 
-export async function updateTheme(id: number, params: ThemeParams, session: AdminSession): Promise<Theme | undefined> {
-  const response = await request('PUT', `/themes/${id}`, session, {theme: {id, ...params}})
-  return buildTheme(response.json.theme)
-}
-
-export async function publishTheme(id: number, session: AdminSession): Promise<Theme | undefined> {
-  return updateTheme(id, {role: 'main'}, session)
-}
-
-export async function deleteTheme(id: number, session: AdminSession): Promise<Theme | undefined> {
-  const response = await request('DELETE', `/themes/${id}`, session)
-  return buildTheme(response.json.theme)
+export async function themeDelete(id: number, session: AdminSession): Promise<boolean | undefined> {
+  const {themeDelete} = await adminRequestDoc(ThemeDelete, session, {id: themeGid(id)})
+  if (themeDelete) {
+    if (themeDelete.deletedThemeId) {
+      return true
+    } else if (themeDelete.userErrors.length) {
+      const userErrors = themeDelete.userErrors.map((error) => error.message).join(', ')
+      throw new AbortError(userErrors)
+    } else {
+      // An unexpected error if neither deletedThemeId nor userErrors are returned
+      unexpectedGraphQLError('Failed to delete theme')
+    }
+  } else {
+    // An unexpected error occured during the GraphQL request execution
+    unexpectedGraphQLError('Failed to delete theme')
+  }
 }
 
 async function request<T>(
@@ -198,6 +243,10 @@ function errorMessage(response: RestResponse): string {
   }
 
   return ''
+}
+
+function unexpectedGraphQLError(message: string) {
+  throw new AbortError(message)
 }
 
 interface RetriableErrorOptions {
