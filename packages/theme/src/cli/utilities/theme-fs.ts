@@ -125,6 +125,7 @@ export function mountThemeFileSystem(root: string, options?: ThemeFileSystemOpti
     const previousChecksum = files.get(fileKey)?.checksum
 
     const contentPromise = read(fileKey).then(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const file = files.get(fileKey)!
 
       if (file.checksum !== previousChecksum) {
@@ -132,7 +133,7 @@ export function mountThemeFileSystem(root: string, options?: ThemeFileSystemOpti
         unsyncedFileKeys.add(fileKey)
       }
 
-      return file.value || file.attachment || ''
+      return file.value ?? file.attachment ?? ''
     })
 
     const syncPromise = contentPromise

@@ -44,7 +44,7 @@ export async function adminRequestDoc<TResult, TVariables extends Variables>(
   version?: string,
   responseOptions?: GraphQLResponseOptions<TResult>,
 ): Promise<TResult> {
-  let apiVersion = version || LatestApiVersionByFQDN.get(session.storeFqdn)
+  let apiVersion = version ?? LatestApiVersionByFQDN.get(session.storeFqdn)
   if (!apiVersion) {
     apiVersion = await fetchLatestSupportedApiVersion(session)
   }
@@ -66,6 +66,7 @@ export async function adminRequestDoc<TResult, TVariables extends Variables>(
  */
 async function fetchLatestSupportedApiVersion(session: AdminSession): Promise<string> {
   const apiVersions = await supportedApiVersions(session)
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const latest = apiVersions.reverse()[0]!
   LatestApiVersionByFQDN.set(session.storeFqdn, latest)
   return latest

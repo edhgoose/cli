@@ -120,7 +120,7 @@ describe('pollRemoteJsonChanges', async () => {
     const themeFileSystem = fakeThemeFileSystem('tmp', new Map())
     themeFileSystem.read = async (fileKey: string) => {
       themeFileSystem.files.set(fileKey, {checksum: '3', key: fileKey})
-      return themeFileSystem.files.get(fileKey)?.value || themeFileSystem.files.get(fileKey)?.attachment
+      return themeFileSystem.files.get(fileKey)?.value ?? themeFileSystem.files.get(fileKey)?.attachment
     }
 
     // When
