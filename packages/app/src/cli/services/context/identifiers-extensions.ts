@@ -13,6 +13,7 @@ import {getPaymentsExtensionsToMigrate, migrateAppModules} from '../dev/migrate-
 import {ExtensionSpecification} from '../../models/extensions/specification.js'
 import {ExtensionInstance} from '../../models/extensions/extension-instance.js'
 import {SingleWebhookSubscriptionType} from '../../models/extensions/specifications/app_config_webhook_schemas/webhooks_schema.js'
+import {getAdminLinkExtensionsToMigrate} from '../dev/migrate-admin-link-extension.js'
 import {outputCompleted} from '@shopify/cli-kit/node/output'
 import {AbortSilentError} from '@shopify/cli-kit/node/error'
 import {groupBy} from '@shopify/cli-kit/common/collection'
@@ -41,6 +42,11 @@ export async function ensureExtensionsIds(
     ? getMarketingActivtyExtensionsToMigrate(localExtensions, dashboardOnlyExtensions, validIdentifiers)
     : []
   const paymentsExtensionsToMigrate = getPaymentsExtensionsToMigrate(
+    localExtensions,
+    dashboardOnlyExtensions,
+    validIdentifiers,
+  )
+  const adminLinkExtensionsToMigrate = getAdminLinkExtensionsToMigrate(
     localExtensions,
     dashboardOnlyExtensions,
     validIdentifiers,
@@ -89,6 +95,19 @@ export async function ensureExtensionsIds(
       paymentsExtensionsToMigrate,
       options.appId,
       'payments_extension',
+      dashboardOnlyExtensions,
+      options.developerPlatformClient,
+    )
+    remoteExtensions = remoteExtensions.concat(newRemoteExtensions)
+  }
+
+  if (adminLinkExtensionsToMigrate.length > 0) {
+    const confirmedMigration = await extensionMigrationPrompt(adminLinkExtensionsToMigrate, false)
+    if (!confirmedMigration) throw new AbortSilentError()
+    const newRemoteExtensions = await migrateAppModules(
+      adminLinkExtensionsToMigrate,
+      options.appId,
+      'admin_link',
       dashboardOnlyExtensions,
       options.developerPlatformClient,
     )
