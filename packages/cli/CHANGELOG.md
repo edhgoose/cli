@@ -1,5 +1,12 @@
 # @shopify/cli
 
+## 4.0.0
+
+### Patch Changes
+
+- 57bb933980: Fix theme dev command deleting remote files even if using --nodelete flag
+- 58768c3b64: Improve language around --nodelete flags for push and pull commands
+
 ## 3.69.0
 
 ### Minor Changes
