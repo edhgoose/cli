@@ -115,7 +115,7 @@ describe('watchPaths', async () => {
 })
 
 describe('keepBuiltSourcemapsLocally', async () => {
-  test('moves the appropriate source map files to the expected directory', async () => {
+  test('moves the appropriate source map files to the expected directory for sourcemap generating extensions', async () => {
     await inTemporaryDirectory(async (bundleDirectory: string) => {
       await inTemporaryDirectory(async (outputPath: string) => {
         const extensionInstance = await testUIExtension({
@@ -138,6 +138,35 @@ describe('keepBuiltSourcemapsLocally', async () => {
 
         expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToMove.js'))).toBe(false)
         expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToMove.js.map'))).toBe(true)
+        expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToIgnore.js'))).toBe(false)
+        expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToIgnore.js.map'))).toBe(false)
+      })
+    })
+  })
+
+  test('does nothing for non-sourcemap generating extensions', async () => {
+    await inTemporaryDirectory(async (bundleDirectory: string) => {
+      await inTemporaryDirectory(async (outputPath: string) => {
+        const extensionInstance = await testUIExtension({
+          type: 'web_pixel_extension',
+          handle: 'scriptToMove',
+          directory: outputPath,
+        })
+        const someDirPath = joinPath(bundleDirectory, 'some_dir')
+        const otherDirPath = joinPath(bundleDirectory, 'other_dir')
+
+        await mkdir(someDirPath)
+        await writeFile(joinPath(someDirPath, 'scriptToMove.js'), 'abc')
+        await writeFile(joinPath(someDirPath, 'scriptToMove.js.map'), 'abc map')
+
+        await mkdir(otherDirPath)
+        await writeFile(joinPath(otherDirPath, 'scriptToIgnore.js'), 'abc')
+        await writeFile(joinPath(otherDirPath, 'scriptToIgnore.js.map'), 'abc map')
+
+        await extensionInstance.keepBuiltSourcemapsLocally(bundleDirectory)
+
+        expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToMove.js'))).toBe(false)
+        expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToMove.js.map'))).toBe(false)
         expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToIgnore.js'))).toBe(false)
         expect(fileExistsSync(joinPath(outputPath, 'dist', 'scriptToIgnore.js.map'))).toBe(false)
       })

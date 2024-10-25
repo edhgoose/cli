@@ -17,9 +17,12 @@ describe('bundleAndBuildExtensions', () => {
 
       const uiExtension = await testUIExtension({type: 'web_pixel_extension'})
       const extensionBundleMock = vi.fn()
+      const extensionKeepSourcemapsMock = vi.fn()
       uiExtension.buildForBundle = extensionBundleMock
+      uiExtension.keepBuiltSourcemapsLocally = extensionKeepSourcemapsMock
       const themeExtension = await testThemeExtensions()
       themeExtension.buildForBundle = extensionBundleMock
+      themeExtension.keepBuiltSourcemapsLocally = extensionKeepSourcemapsMock
       app = testApp({allExtensions: [uiExtension, themeExtension]})
 
       const extensions: {[key: string]: string} = {}
@@ -64,6 +67,7 @@ describe('bundleAndBuildExtensions', () => {
 
       // Then
       expect(extensionBundleMock).toHaveBeenCalledTimes(2)
+      expect(extensionKeepSourcemapsMock).toHaveBeenCalledTimes(2)
       expect(file.writeFileSync).toHaveBeenCalledWith(
         expect.stringContaining('manifest.json'),
         JSON.stringify(expectedManifest, null, 2),
